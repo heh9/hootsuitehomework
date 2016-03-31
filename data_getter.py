@@ -18,29 +18,34 @@ categories = [('events', '== Events =='),
 client = MongoClient()
 db = client.homework
 
-for month in calendar:
-	for d in xrange(1, month[1] + 1):
-		d_name = month[0] + '_' + str(d)
-		day = wikipedia.page(d_name).content
-		c = 0
-		for index in xrange(0, len(categories) - 1):
-			category = (day[day.find(categories[index][1]) + len(categories[index][1]):
-						day.find(categories[index + 1][1])].split('\n'))
+def insert_to_db(line):
+	if len(line) < 2: year, text = '0', line[0] #observances have no year
+	else: year, text = line[0][:-1], line[1] #-1 slicing to remove \n
 
-			for text_line in category:
-				if text_line:
-					line = re.split(u"\u2013", text_line)
-					if len(line) < 2:
-						year = '0'
-		  				text = line[0]
-					else:
-						year = line[0][:-1]
-						text = line[1]
-					res = db.wiki.insert({
-						'year': year,
-						'info': text,
-						'day': d_name,
-						'category': categories[index][0]
-						})
-					c += 1
-		print("day: " + d_name + " has " + str(c) + " entries\n")
+	res = db.wiki.insert({
+		'year': year,
+		'info': text,
+		'day': day_name,
+		'category': categories[categ_index][0]
+		})
+	return res
+
+for month in calendar:
+	for day_index in xrange(1, month[1] + 1):
+		day_name = month[0] + '_' + str(day_index)
+		day_content = wikipedia.page(day_name).content
+		count = 0
+
+		for categ_index in xrange(0, len(categories) - 1):
+			left_index = (day_content.find(categories[categ_index][1]) + 
+						  len(categories[categ_index][1]))
+			right_index = day_content.find(categories[categ_index + 1][1])
+			category_content = (day_content[left_index : right_index].split('\n'))
+			#get only the content between '== this1 ==' and '== this2 =='
+
+			for line in category_content:
+				if line:
+					line = re.split(u"\u2013", line) #remove the dashes
+					insert_to_db(line)
+					count += 1
+		print("Inserted " + str(count) + " entries for " + day_name)
