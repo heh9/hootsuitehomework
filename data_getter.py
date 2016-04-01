@@ -4,14 +4,6 @@ import re
 from pymongo import MongoClient
 from pymongo import IndexModel, ASCENDING, DESCENDING
 
-client = MongoClient()
-db = client.homework
-db.wiki.create_index([
-			('category', ASCENDING),
-			('year', ASCENDING),
-			('day', ASCENDING),
-			('title', ASCENDING)
-			])
 wikipedia.set_rate_limiting(True, min_wait=datetime.timedelta(0, 0, 20000))
 calendar = [('January', 31), ('February', 29), 
 			 ('March', 31), ('April', 30), 
@@ -26,18 +18,18 @@ categories = [('events', '== Events =='),
 			  ('observances', '== Holidays and observances =='),
 			  ('dummy', '== External links ==')]
 
-def insert_to_db(line, day_n, categ_i):
+def insert_to_db(line, day_n, categ_i, db):
 	if len(line) < 2: year, text = '0', line[0] #observances have no year
-	else: year, text = line[0][:-1], line[1] #-1 slicing to remove \n
+	else: year, text = line[0][:-1], line[1][1:] #first char is a space
 
-	title = text[2:5]
+	infkey = text[1:9]
 
 	res = db.wiki.update_one(
 		{
 			'category': categories[categ_i][0],
 			'year': year,
 			'day': day_n,
-			'title': title,
+			'infokey': infkey,
 			'info': text
 		},
 		{
@@ -45,7 +37,7 @@ def insert_to_db(line, day_n, categ_i):
 				'category': categories[categ_i][0],
 				'year': year,
 				'day': day_n,
-				'title': title,
+				'infokey': infkey,
 				'info': text
 			}
 		},
@@ -82,13 +74,22 @@ def update_db(db):
 				for line in category_content:
 					if line:
 						line = split_line(line)
-						result = insert_to_db(line, day_name, categ_index)
+						result = insert_to_db(line, day_name, categ_index, db)
 						if result.modified_count != 0: count_up += 1
 						elif result.matched_count == 0: count_ins += 1
-			#print("Inserted " + str(count_ins) + ", Updated " + str(count_up) + " entries for " + day_name)
+			print("Inserted " + str(count_ins) + ", Updated " + str(count_up) + " entries for " + day_name)
 	print("Database update finished")
 
 def main():
+
+	client = MongoClient('localhost', 27017)
+	db = client.homework
+	db.wiki.create_index([
+			('category', ASCENDING),
+			('year', ASCENDING),
+			('day', ASCENDING),
+			('infokey', ASCENDING)
+			])
 
 	print("Database update started")
 	update_db(db)
