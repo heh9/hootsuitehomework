@@ -1,7 +1,18 @@
 import wikipedia
+import datetime
 import re
 from pymongo import MongoClient
+from pymongo import IndexModel, ASCENDING, DESCENDING
 
+client = MongoClient()
+db = client.homework
+db.wiki.create_index([
+			('category', ASCENDING),
+			('year', ASCENDING),
+			('day', ASCENDING),
+			('title', ASCENDING)
+			])
+wikipedia.set_rate_limiting(True, min_wait=datetime.timedelta(0, 0, 20000))
 calendar = [('January', 31), ('February', 29), 
 			 ('March', 31), ('April', 30), 
 			 ('May', 31), ('June', 30),
@@ -15,37 +26,71 @@ categories = [('events', '== Events =='),
 			  ('observances', '== Holidays and observances =='),
 			  ('dummy', '== External links ==')]
 
-client = MongoClient()
-db = client.homework
-
-def insert_to_db(line):
+def insert_to_db(line, day_n, categ_i):
 	if len(line) < 2: year, text = '0', line[0] #observances have no year
 	else: year, text = line[0][:-1], line[1] #-1 slicing to remove \n
 
-	res = db.wiki.insert({
-		'year': year,
-		'info': text,
-		'day': day_name,
-		'category': categories[categ_index][0]
-		})
+	title = text[2:5]
+
+	res = db.wiki.update_one(
+		{
+			'category': categories[categ_i][0],
+			'year': year,
+			'day': day_n,
+			'title': title,
+			'info': text
+		},
+		{
+			'$set': {
+				'category': categories[categ_i][0],
+				'year': year,
+				'day': day_n,
+				'title': title,
+				'info': text
+			}
+		},
+		upsert=True
+	)
+
 	return res
 
-for month in calendar:
-	for day_index in xrange(1, month[1] + 1):
-		day_name = month[0] + '_' + str(day_index)
-		day_content = wikipedia.page(day_name).content
-		count = 0
+def get_categ_content(content, c_index):
+	l_index = (content.find(categories[c_index][1]) + 
+						  len(categories[c_index][1]))
+	r_index = right_index = content.find(categories[c_index + 1][1])
+	return content[l_index : r_index]
 
-		for categ_index in xrange(0, len(categories) - 1):
-			left_index = (day_content.find(categories[categ_index][1]) + 
-						  len(categories[categ_index][1]))
-			right_index = day_content.find(categories[categ_index + 1][1])
-			category_content = (day_content[left_index : right_index].split('\n'))
-			#get only the content between '== this1 ==' and '== this2 =='
+def split_line(line):
+	line = re.split(u"\u2013", line) #remove the dashes
+	return line
 
-			for line in category_content:
-				if line:
-					line = re.split(u"\u2013", line) #remove the dashes
-					insert_to_db(line)
-					count += 1
-		print("Inserted " + str(count) + " entries for " + day_name)
+def get_wiki_content(date): #for timing purpose, observation: very slow TODO: change scrapper
+	return wikipedia.page(date).content
+
+def update_db(db):
+	
+	count_up, count_ins = 0, 0
+	for month in calendar:
+		for day_index in xrange(1, month[1] + 1):
+			day_name = month[0] + '_' + str(day_index)
+			day_content = get_wiki_content(day_name)
+
+			for categ_index in xrange(0, len(categories) - 1):
+				category_content = get_categ_content(day_content, categ_index).split('\n')
+				#get only the content between '== this1 ==' and '== this2 =='
+
+				for line in category_content:
+					if line:
+						line = split_line(line)
+						result = insert_to_db(line, day_name, categ_index)
+						if result.modified_count != 0: count_up += 1
+						elif result.matched_count == 0: count_ins += 1
+	print("Database update finished")
+	print("Inserted " + str(count_ins) + ", Updated " + str(count_up) + " entries for " + day_name)
+
+def main():
+
+	print("Database update started")
+	update_db(db)
+
+main()
