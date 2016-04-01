@@ -69,9 +69,9 @@ def get_wiki_content(date): #for timing purpose, observation: very slow TODO: ch
 
 def update_db(db):
 	
-	count_up, count_ins = 0, 0
 	for month in calendar:
 		for day_index in xrange(1, month[1] + 1):
+			count_up, count_ins = 0, 0
 			day_name = month[0] + '_' + str(day_index)
 			day_content = get_wiki_content(day_name)
 
@@ -85,8 +85,8 @@ def update_db(db):
 						result = insert_to_db(line, day_name, categ_index)
 						if result.modified_count != 0: count_up += 1
 						elif result.matched_count == 0: count_ins += 1
+			#print("Inserted " + str(count_ins) + ", Updated " + str(count_up) + " entries for " + day_name)
 	print("Database update finished")
-	print("Inserted " + str(count_ins) + ", Updated " + str(count_up) + " entries for " + day_name)
 
 def main():
 
