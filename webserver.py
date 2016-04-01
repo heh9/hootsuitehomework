@@ -3,7 +3,7 @@ from flask import request
 from bson.json_util import dumps
 from pymongo import MongoClient
 
-client = MongoClient()
+client = MongoClient('localhost', 27017)
 db = client.homework
 
 app = Flask(__name__)
@@ -11,8 +11,11 @@ app = Flask(__name__)
 def get_query(category = None, year = None, day = None):
 	if (not year and not day and not category): return " "
 	loc = locals()
+	if category == 'observances' and loc.get('year') != None: del loc['year']
+	#del year from crit in case category is observances 
+	#because observances are tagged with year 0
 	criteria = {k:loc[k] for k in loc if loc[k] != None}
-	return db.wiki.find(criteria, {'_id': False})
+	return db.wiki.find(criteria, {'_id': False, 'infokey': False})
 
 @app.route('/', methods = ['GET'])
 def get_req():
