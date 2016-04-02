@@ -1,10 +1,11 @@
 import wikipedia
-import datetime
+import os
+import time
+from datetime import datetime, timedelta
 import re
 from pymongo import MongoClient
 from pymongo import IndexModel, ASCENDING, DESCENDING
 
-wikipedia.set_rate_limiting(True, min_wait=datetime.timedelta(0, 0, 20000))
 calendar = [('January', 31), ('February', 29), 
 			 ('March', 31), ('April', 30), 
 			 ('May', 31), ('June', 30),
@@ -77,12 +78,15 @@ def update_db(db):
 						result = insert_to_db(line, day_name, categ_index, db)
 						if result.modified_count != 0: count_up += 1
 						elif result.matched_count == 0: count_ins += 1
-			print("Inserted " + str(count_ins) + ", Updated " + str(count_up) + " entries for " + day_name)
+			#print("Inserted " + str(count_ins) + ", Updated " + str(count_up) + " entries for " + day_name)
 	print("Database update finished")
 
 def main():
 
-	client = MongoClient('localhost', 27017)
+        client = MongoClient(
+                os.environ['DB_PORT_27017_TCP_ADDR'],
+                27017
+                )
 	db = client.homework
 	db.wiki.create_index([
 			('category', ASCENDING),
@@ -90,8 +94,12 @@ def main():
 			('day', ASCENDING),
 			('infokey', ASCENDING)
 			])
-
-	print("Database update started")
-	update_db(db)
+        while True:
+	    time_now = datetime.now()
+            time_next = time_now + timedelta(hours=2)
+            print("Update started at %s" % time_now.strftime('%H:%M'))
+	    update_db(db)
+            print("Next update at %s" % time_next.strftime('%H:%M'))
+            time.sleep(7200)
 
 main()
