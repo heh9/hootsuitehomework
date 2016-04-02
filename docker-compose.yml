@@ -1,0 +1,22 @@
+webapp:
+        build: .
+        command: python -u webserver.py
+        ports:
+                - "5000:5000"
+        volumes:
+                - .:/webapp
+        links:
+                - db
+db:
+        image: mongo:3.0.2
+        command: mongod --smallfiles --quiet --logpath=/dev/null
+datagetter:
+        dockerfile: Dockerfile-alt
+        build: .
+        command: python data_getter.py
+        ports:
+                - "2017:2017"
+        volumes:
+                - .:/app
+        links:
+                - db
