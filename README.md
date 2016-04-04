@@ -4,8 +4,6 @@
 
 * webserver.py is a webserver made in Flask that receives requests from the user as (http://localhost:5000/?year=2009&category=deaths&day=March_14). The user can also query for a single variable like (http://localhost:5000/?year=2009).
 
-* The whole solution is put into a docker container so it runs the same on  any environment that is tested.
-
 #2. Running instructions:
 
 * For running the solution you need to install the latest version of docker and docker-compose. You also need git for cloning the repo.
@@ -13,8 +11,11 @@
 ```
   $ git clone https://github.com/vladimiriacob/hootsuitehomework
 ```
-```  
-  $ cd hootsuitehomework && docker-compose up
+```
+  $ cd hootsuitehomework && docker-compose build
+```
+```
+  $ docker-compose up
 ```
 * The scrapper is not very fast. It needs around 1-2 seconds to scrap the data from one page.
 After a couple of minutes go to your localhost:5000 and start making requests to the webserver.
